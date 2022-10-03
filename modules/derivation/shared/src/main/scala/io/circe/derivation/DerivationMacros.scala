@@ -404,18 +404,19 @@ class DerivationMacros(val c: blackbox.Context) extends ScalaVersionCompat {
                   case _ => failedDecoder
                 }
               case _root_.scala.None =>
-                _root_.io.circe.Decoder[_root_.io.circe.JsonObject].flatMap {
-                  case obj if obj.size == 1 =>
-                    val key = obj.keys.toList.head
-                    var failed = false
+                _root_.io.circe.Decoder[_root_.io.circe.JsonObject].flatMap { obj =>
+                  obj.keys.toList match {
+                    case key :: Nil =>
+                      var failed = false
 
-                    val constructorDecoder = key match {
-                      case ..$discriminatorCases
-                      case _ => failed = true; failedDecoder
-                    }
+                      val constructorDecoder = key match {
+                        case ..$discriminatorCases
+                        case _ => failed = true; failedDecoder
+                      }
 
-                    if (failed) constructorDecoder else constructorDecoder.at(key)
-                  case _ => failedDecoder
+                      if (failed) constructorDecoder else constructorDecoder.at(key)
+                    case _ => failedDecoder
+                  }
                 }
             }
 
@@ -841,18 +842,19 @@ class DerivationMacros(val c: blackbox.Context) extends ScalaVersionCompat {
                   case _ => failedDecoder
                 }
               case _root_.scala.None =>
-                _root_.io.circe.Decoder[_root_.io.circe.JsonObject].flatMap {
-                  case obj if obj.size == 1 =>
-                    val key = obj.keys.toList.head
-                    var failed = false
+                _root_.io.circe.Decoder[_root_.io.circe.JsonObject].flatMap { obj =>
+                  obj.keys.toList match {
+                    case key :: Nil =>
+                      var failed = false
 
-                    val constructorDecoder = key match {
-                      case ..$discriminatorCases
-                      case _ => failed = true; failedDecoder
-                    }
+                      val constructorDecoder = key match {
+                        case ..$discriminatorCases
+                        case _ => failed = true; failedDecoder
+                      }
 
-                    if (failed) constructorDecoder else constructorDecoder.at(key)
-                  case _ => failedDecoder
+                      if (failed) constructorDecoder else constructorDecoder.at(key)
+                    case _ => failedDecoder
+                  }
                 }
             }
 
