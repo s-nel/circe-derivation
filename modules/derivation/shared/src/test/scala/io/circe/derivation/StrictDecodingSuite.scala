@@ -100,7 +100,7 @@ class StrictDecodingSuite extends CirceSuite {
 
     json.as[User] match {
       case Left(DecodingFailure(str, ops)) =>
-        assert(str === "Unexpected field: [foo]. valid fields: #, street, city")
+        assert(str === "Unexpected field: [foo]; valid fields: #, street, city")
       case a =>
         fail(s"Expected decoding failure, got $a")
     }
