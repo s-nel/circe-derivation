@@ -1,39 +1,37 @@
 package io.circe.derivation
 
-import io.circe.{ Codec, Decoder, Encoder, Json }
-import io.circe.examples.{ Bar, Baz, Foo, Qux }
-import io.circe.parser.decode
-import io.circe.syntax._
+import io.circe.examples.{Bar, Baz, Foo, Qux}
+import io.circe.{Codec, Decoder, DecodingFailure, Encoder, Json}
 import io.circe.testing.CodecTests
 
-object TransformMemberNamesSuiteCodecs extends Serializable {
-  implicit val decodeFoo: Decoder[Foo] = deriveDecoder(renaming.snakeCase, true, None, false)
+object StrictDecodingSuiteCodecs extends Serializable {
+  implicit val decodeFoo: Decoder[Foo] = deriveDecoder(renaming.snakeCase, true, None, true)
   implicit val encodeFoo: Encoder.AsObject[Foo] = deriveEncoder(renaming.snakeCase, None)
-  val codecForFoo: Codec.AsObject[Foo] = deriveCodec(renaming.snakeCase, true, None, false)
+  val codecForFoo: Codec.AsObject[Foo] = deriveCodec(renaming.snakeCase, true, None, true)
 
-  implicit val decodeBar: Decoder[Bar] = deriveDecoder(renaming.snakeCase, true, None, false)
+  implicit val decodeBar: Decoder[Bar] = deriveDecoder(renaming.snakeCase, true, None, true)
   implicit val encodeBar: Encoder.AsObject[Bar] = deriveEncoder(renaming.snakeCase, None)
-  val codecForBar: Codec.AsObject[Bar] = deriveCodec(renaming.snakeCase, true, None, false)
+  val codecForBar: Codec.AsObject[Bar] = deriveCodec(renaming.snakeCase, true, None, true)
 
-  implicit val decodeBaz: Decoder[Baz] = deriveDecoder(renaming.snakeCase, true, None, false)
+  implicit val decodeBaz: Decoder[Baz] = deriveDecoder(renaming.snakeCase, true, None, true)
   implicit val encodeBaz: Encoder.AsObject[Baz] = deriveEncoder(renaming.snakeCase, None)
-  val codecForBaz: Codec.AsObject[Baz] = deriveCodec(renaming.snakeCase, true, None, false)
+  val codecForBaz: Codec.AsObject[Baz] = deriveCodec(renaming.snakeCase, true, None, true)
 
   implicit def decodeQux[A: Decoder]: Decoder[Qux[A]] =
-    deriveDecoder(renaming.replaceWith("aa" -> "1", "bb" -> "2"), true, None, false)
+    deriveDecoder(renaming.replaceWith("aa" -> "1", "bb" -> "2"), true, None, true)
   implicit def encodeQux[A: Encoder]: Encoder.AsObject[Qux[A]] =
     deriveEncoder(renaming.replaceWith("aa" -> "1", "bb" -> "2"), None)
   def codecForQux[A: Decoder: Encoder]: Codec.AsObject[Qux[A]] = deriveCodec(
     renaming.replaceWith("aa" -> "1", "bb" -> "2"),
     true,
     None,
-    false
+    true
   )
 }
 
-class TransformMemberNamesSuite extends CirceSuite {
-  import TransformMemberNamesExample._
-  import TransformMemberNamesSuiteCodecs._
+class StrictDecodingSuite extends CirceSuite {
+  import StrictDecodingExample._
+  import StrictDecodingSuiteCodecs._
 
   checkAll("Codec[Foo]", CodecTests[Foo].codec)
   checkAll("Codec[Foo] via Codec", CodecTests[Foo](codecForFoo, codecForFoo).codec)
@@ -87,26 +85,24 @@ class TransformMemberNamesSuite extends CirceSuite {
     ).codecAgreement
   )
 
-  "deriveEncoder" should "properly transform member names" in forAll { (user: User) =>
-    val expected = Json.obj(
-      "first_name" -> Json.fromString(user.firstName),
-      "last_name" -> Json.fromString(user.lastName),
-      "role" -> Json.obj("TITLE" -> Json.fromString(user.role.title)),
+  "deriveDecoder" should "return error when json has extra fields" in {
+    val json = Json.obj(
+      "first_name" -> Json.fromString("John"),
+      "last_name" -> Json.fromString("Smith"),
+      "role" -> Json.obj("TITLE" -> Json.fromString("Entrepreneur")),
       "address" -> Json.obj(
-        "#" -> Json.fromInt(user.address.number),
-        "street" -> Json.fromString(user.address.street),
-        "city" -> Json.fromString(user.address.city)
+        "#" -> Json.fromInt(5),
+        "street" -> Json.fromString("Elm Street"),
+        "city" -> Json.fromString("Springfield"),
+        "foo" -> Json.fromString("bar")
       )
     )
 
-    assert(user.asJson === expected)
-  }
-
-  it should "encode the last name-duplicated member when transformation isn't unique" in forAll { (abc: Abc) =>
-    assert(abc.asJson === Json.obj("x" -> Json.fromString(abc.c)))
-  }
-
-  "deriveDecoder" should "decode appropriately when transformation isn't unique" in forAll { (abc: Abc) =>
-    assert(decode[Abc](abc.asJson.noSpaces) === Right(Abc(abc.c, abc.c, abc.c)))
+    json.as[User] match {
+      case Left(DecodingFailure(str, ops)) =>
+        assert(str === "Unexpected field: [foo]. valid fields: #, street, city")
+      case a =>
+        fail(s"Expected decoding failure, got $a")
+    }
   }
 }
